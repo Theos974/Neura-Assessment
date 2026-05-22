@@ -229,9 +229,7 @@ no grid export, and round-trip efficiency accounting.
 
 ## How I used AI
 
-Claude Code (claude-sonnet-4-6, VSCode extension) was used heavily throughout — which is exactly
-what the spec asks for.
-
+Claude Code (claude-sonnet-4-6, VSCode extension) was used 
 **Where it helped directly:**
 
 - Scaffolded the Django project structure, models, and management command boilerplate in minutes
@@ -255,6 +253,6 @@ what the spec asks for.
   consistently across both views
 
 **Honest assessment:** Claude is faster than I am at boilerplate and chart config. It is slower
-than I am at noticing when numbers don't add up. The loop that found the UTC/local date bug was:
+than I am at noticing when numbers don't add up or conflicts that don't make sense. The loop that found the UTC/local date bug was:
 inspect output → form hypothesis → read code → verify with arithmetic → tell Claude exactly
-what to change. That loop ran several times. The AI was the junior; I was driving.
+what to change. That loop ran several times. 
