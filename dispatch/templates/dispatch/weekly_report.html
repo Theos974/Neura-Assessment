@@ -1,249 +1,216 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Battery Report — Limassol Hotel</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="{% static 'dispatch/plotly.min.js' %}"></script>
-  <style>
-    :root {
-      --blue:    #1e40af;
-      --blue-lt: #3b82f6;
-      --green:   #059669;
-      --green-lt:#d1fae5;
-      --amber:   #d97706;
-      --slate:   #1e293b;
-      --muted:   #64748b;
-      --border:  #e2e8f0;
-      --bg:      #f1f5f9;
-    }
+{% extends "dispatch/base.html" %}
 
-    * { box-sizing: border-box; }
-    body { background: var(--bg); font-family: system-ui, -apple-system, sans-serif; color: var(--slate); margin: 0; }
+{% block title %}Weekly Report · Neura{% endblock %}
 
-    /* Header */
-    .report-header {
-      background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
-      color: white;
-      padding: 2.5rem 2rem 2rem;
-    }
-    .report-header .hotel-name { font-size: .85rem; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; opacity: .7; margin-bottom: .25rem; }
-    .report-header h1 { font-size: 1.75rem; font-weight: 700; margin: 0 0 .25rem; }
-    .report-header .week { font-size: .9rem; opacity: .65; }
-
-    .hero-saving {
-      background: rgba(255,255,255,.1);
-      border: 1px solid rgba(255,255,255,.2);
-      border-radius: 16px;
-      padding: 1.25rem 1.75rem;
-      display: inline-block;
-      margin-top: 1.5rem;
-    }
-    .hero-saving .amount { font-size: 3rem; font-weight: 800; line-height: 1; color: #6ee7b7; }
-    .hero-saving .label  { font-size: .85rem; opacity: .75; margin-top: .2rem; }
-    .hero-saving .annual { font-size: .8rem; opacity: .55; margin-top: .15rem; }
-
-    /* Main content */
-    .content { padding: 2rem; max-width: 1200px; margin: 0 auto; }
-
-    /* Section labels */
-    .section-label {
-      font-size: .7rem;
-      font-weight: 600;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--muted);
-      margin-bottom: .75rem;
-      margin-top: 1.75rem;
-    }
-
-    /* KPI cards */
-    .kpi-grid {
-      display: grid;
-      gap: 1rem;
-    }
-    .kpi-grid-4 { grid-template-columns: repeat(4, 1fr); }
-    .kpi-grid-4-alt { grid-template-columns: repeat(4, 1fr); }
-
-    .kpi-card {
-      background: white;
-      border-radius: 14px;
-      padding: 1.25rem 1.5rem;
-      border: 1px solid var(--border);
-      position: relative;
-      overflow: hidden;
-    }
-    .kpi-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: var(--border);
-      border-radius: 14px 14px 0 0;
-    }
-    .kpi-card.accent-green::before  { background: var(--green); }
-    .kpi-card.accent-blue::before   { background: var(--blue-lt); }
-    .kpi-card.accent-amber::before  { background: var(--amber); }
-    .kpi-card.accent-slate::before  { background: #94a3b8; }
-
-    .kpi-icon { font-size: 1.4rem; margin-bottom: .5rem; }
-    .kpi-value { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
-    .kpi-value.green  { color: var(--green); }
-    .kpi-value.blue   { color: var(--blue); }
-    .kpi-value.muted  { color: #94a3b8; }
-    .kpi-label { font-size: .78rem; color: var(--muted); margin-top: .3rem; font-weight: 500; }
-
-    /* Comparison row */
-    .comparison-bar {
-      background: white;
-      border-radius: 14px;
-      padding: 1.25rem 1.5rem;
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      flex-wrap: wrap;
-    }
-    .comparison-bar .item { text-align: center; flex: 1; min-width: 100px; }
-    .comparison-bar .arrow { color: var(--muted); font-size: 1.5rem; flex-shrink: 0; }
-    .comparison-bar .saving-badge {
-      background: var(--green-lt);
-      color: var(--green);
-      border-radius: 8px;
-      padding: .5rem 1rem;
-      font-weight: 700;
-      font-size: .9rem;
-      flex-shrink: 0;
-    }
-    .cb-value { font-size: 1.4rem; font-weight: 700; }
-    .cb-label { font-size: .75rem; color: var(--muted); margin-top: .1rem; }
-
-    /* Charts */
-    .chart-card {
-      background: white;
-      border-radius: 14px;
-      padding: 1.25rem 1.5rem;
-      border: 1px solid var(--border);
-      margin-bottom: 1rem;
-    }
-    .chart-card h2 {
-      font-size: .9rem;
-      font-weight: 600;
-      color: var(--slate);
-      margin: 0 0 1rem;
-    }
-
-    /* Footer */
-    .report-footer {
-      text-align: center;
-      padding: 1.5rem 2rem;
-      font-size: .75rem;
-      color: #94a3b8;
-      border-top: 1px solid var(--border);
-      margin-top: 1rem;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .kpi-grid-4, .kpi-grid-4-alt { grid-template-columns: repeat(2, 1fr); }
-      .content { padding: 1rem; }
-      .report-header { padding: 1.5rem 1rem; }
-      .hero-saving .amount { font-size: 2.2rem; }
-    }
-  </style>
-</head>
-<body>
-
+{% block main %}
 {% if no_data %}
 <div style="padding:3rem;text-align:center">
-  <p style="color:#64748b;font-size:1.1rem">No data found. Run <code>python manage.py seed_data</code> first.</p>
+  <p style="color:var(--muted);font-size:1.1rem">
+    No data found. Run <code>python manage.py seed_data</code> first.
+  </p>
 </div>
 {% else %}
 
-<header class="report-header">
-  <div style="max-width:1200px;margin:0 auto">
-    <div class="hotel-name">Limassol Hotel &mdash; Behind-the-Meter Battery</div>
-    <h1>Weekly Performance Report</h1>
-    <div class="week">{{ week_label }}</div>
-
-    <div class="hero-saving">
-      <div class="amount">€{{ saving_eur }}</div>
-      <div class="label">saved on grid electricity this week</div>
-      <div class="annual">Projected annual saving &mdash; €{{ annual_saving|floatformat:"0" }}</div>
-    </div>
+<header class="page">
+  <div>
+    <h1>Weekly report</h1>
+    <div class="sub">{{ week_label }} · 15-minute resolution</div>
+  </div>
+  <div class="toolbar">
+    <form method="get" id="date-form" style="display:contents">
+      <label style="font-size:12px;color:var(--muted)">From</label>
+      <input type="date" name="from" value="{{ from_date }}"
+             min="{{ first_date }}" max="{{ last_date }}"
+             class="btn" style="padding:6px 10px"
+             onchange="document.getElementById('date-form').submit()">
+      <label style="font-size:12px;color:var(--muted)">To</label>
+      <input type="date" name="to" value="{{ to_date }}"
+             min="{{ first_date }}" max="{{ last_date }}"
+             class="btn" style="padding:6px 10px"
+             onchange="document.getElementById('date-form').submit()">
+      <a href="/reports/weekly/" class="btn" style="text-decoration:none">Reset</a>
+    </form>
   </div>
 </header>
 
-<main class="content">
-
-  <div class="section-label">Financial Summary</div>
-  <div class="comparison-bar">
-    <div class="item">
-      <div class="cb-value" style="color:#94a3b8">€{{ total_cf_cost }}</div>
-      <div class="cb-label">Without battery</div>
-    </div>
-    <div class="arrow">→</div>
-    <div class="item">
-      <div class="cb-value">€{{ total_cost }}</div>
-      <div class="cb-label">With battery</div>
-    </div>
-    <div class="saving-badge">↓ {{ saving_pct }}% &nbsp; €{{ saving_eur }} saved</div>
+<div class="kpi-grid">
+  <div class="card kpi">
+    <div class="label">Weekly savings</div>
+    <div class="value">€{{ saving_eur }}</div>
+    <div class="delta up">↓ {{ saving_pct }}% vs no-battery</div>
   </div>
+  <div class="card kpi">
+    <div class="label">Grid spend</div>
+    <div class="value">€{{ total_cost }}</div>
+    <div class="delta neutral">Baseline €{{ total_cf_cost }}</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Self-consumption</div>
+    <div class="value">{{ self_consumption }}%</div>
+    <div class="delta up">{{ total_solar_kwh }} kWh solar generated</div>
+  </div>
+  <div class="card kpi">
+    <div class="label">Battery cycled</div>
+    <div class="value">{{ kwh_charged }} kWh</div>
+    <div class="delta neutral">{{ kwh_discharged }} kWh discharged</div>
+  </div>
+</div>
 
-  <div class="section-label">Energy Metrics</div>
-  <div class="kpi-grid kpi-grid-4">
-    <div class="kpi-card accent-amber">
-      <div class="kpi-icon">☀️</div>
-      <div class="kpi-value">{{ total_solar_kwh }} kWh</div>
-      <div class="kpi-label">Solar generated</div>
+<div class="row-2">
+  <div class="card">
+    <div class="section-head">
+      <h2>Energy flow</h2>
+      <div class="meta">kW · solar, load, grid, battery</div>
     </div>
-    <div class="kpi-card accent-green">
-      <div class="kpi-icon">♻️</div>
-      <div class="kpi-value green">{{ self_consumption }}%</div>
-      <div class="kpi-label">Solar self-consumption</div>
-    </div>
-    <div class="kpi-card accent-blue">
-      <div class="kpi-icon">⬆️</div>
-      <div class="kpi-value blue">{{ kwh_charged }} kWh</div>
-      <div class="kpi-label">Battery charged</div>
-    </div>
-    <div class="kpi-card accent-blue">
-      <div class="kpi-icon">⬇️</div>
-      <div class="kpi-value blue">{{ kwh_discharged }} kWh</div>
-      <div class="kpi-label">Battery discharged</div>
+    <div class="chart-wrap" id="dispatch-chart"></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#2f7d54"></i>Solar</span>
+      <span><i class="swatch" style="background:#1a1a1a"></i>Load</span>
+      <span><i class="swatch" style="background:#b03a3a"></i>Grid draw</span>
+      <span><i class="swatch" style="background:#1f5fbf"></i>Battery</span>
     </div>
   </div>
-
-  <div class="section-label">Battery State of Charge</div>
-  <div class="chart-card">
-    <div id="soc-chart"></div>
+  <div class="card">
+    <div class="section-head">
+      <h2>State of charge</h2>
+      <div class="meta">10%–95% operating band</div>
+    </div>
+    <div class="chart-wrap" id="soc-chart"></div>
+    <div class="legend">
+      <span><i class="swatch" style="background:#b5740b"></i>SoC %</span>
+    </div>
   </div>
+</div>
 
-  <div class="section-label">Dispatch Schedule</div>
-  <div class="chart-card">
-    <div id="dispatch-chart"></div>
+<div class="row-2">
+  <div class="card">
+    <div class="section-head">
+      <h2>Dispatch schedule</h2>
+      <div class="meta">Per day · share of 15-min intervals</div>
+    </div>
+    <div class="timeline">
+      {% for item in daily_timeline %}
+      <div class="timeline-row">
+        <span class="day">{{ item.day }}</span>
+        <div class="bar">
+          <div class="seg-grid"  style="width:{{ item.grid_charge_pct }}%"></div>
+          <div class="seg-solar" style="width:{{ item.solar_pct }}%"></div>
+          <div class="seg-disch" style="width:{{ item.discharge_pct }}%"></div>
+          <div class="seg-idle"  style="width:{{ item.idle_pct }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="legend" style="margin-top:16px">
+      <span><i class="swatch" style="background:#1f5fbf"></i>Grid charge</span>
+      <span><i class="swatch" style="background:#2f7d54"></i>Solar charge</span>
+      <span><i class="swatch" style="background:#b5740b"></i>Discharge</span>
+      <span><i class="swatch" style="background:#e5e5e3"></i>Idle</span>
+    </div>
   </div>
+  <div class="card">
+    <div class="section-head">
+      <h2>Savings by day</h2>
+      <div class="meta">€ vs no-battery baseline</div>
+    </div>
+    <div class="chart-wrap sm" id="savings-chart"></div>
+  </div>
+</div>
 
-</main>
+<div class="card row-1">
+  <div class="section-head">
+    <h2>Tariff comparison</h2>
+    <div class="meta">Same dispatch · different billing rates</div>
+  </div>
+  <div class="tariff-grid">
+    <div class="tariff-col active">
+      <div class="tariff-name">Residential Code 02</div>
+      <div class="tariff-rates">Day €0.30 / Night €0.15 · same every day</div>
+      <div class="tariff-saving">€{{ saving_eur }} saved</div>
+      <div class="tariff-pct">{{ saving_pct }}% reduction · €{{ annual_saving }}/year projected</div>
+    </div>
+    <div class="tariff-col">
+      <div class="tariff-name">Commercial LV Code 30</div>
+      <div class="tariff-rates">
+        Weekday peak €{{ comm_wd_peak_rate }} / off-peak €{{ comm_wd_offpeak_rate }}<br>
+        Weekend peak €{{ comm_we_peak_rate }} / off-peak €{{ comm_we_offpeak_rate }}
+      </div>
+      <div class="tariff-saving {% if comm_saving_eur < saving_eur %}worse{% endif %}">€{{ comm_saving_eur }} saved</div>
+      <div class="tariff-pct">{{ comm_saving_pct }}% reduction · €{{ comm_annual_saving }}/year projected</div>
+      <div class="tariff-note">{{ comm_tariff_source }}</div>
+    </div>
+  </div>
+</div>
 
-<footer class="report-footer">
-  Solar data: renewables.ninja synthetic clear-sky model &mdash; Limassol 34.68°N 33.04°E, 200 kWp, PR 0.78 &mdash;
-  Load: synthetic hotel profile, peak 200 kW &mdash;
-  Tariff: EAC stylised TOU — day €0.30 / night €0.15
-</footer>
+<div class="card row-1">
+  <div class="section-head">
+    <h2>Dispatch intervals</h2>
+    <form method="get" id="interval-form" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <input type="hidden" name="from"  value="{{ from_date }}">
+      <input type="hidden" name="to"    value="{{ to_date }}">
+      <label style="font-size:12px;color:var(--muted)">Hour</label>
+      <select name="hour_from" class="btn" style="padding:4px 8px;font-size:12px"
+              onchange="document.getElementById('interval-form').submit()">
+        {% for h in hour_options %}
+        <option value="{{ h }}" {% if h == hour_from %}selected{% endif %}>{{ h|stringformat:"02d" }}:00</option>
+        {% endfor %}
+      </select>
+      <span style="color:var(--muted);font-size:12px">–</span>
+      <select name="hour_to" class="btn" style="padding:4px 8px;font-size:12px"
+              onchange="document.getElementById('interval-form').submit()">
+        {% for h in hour_options %}
+        <option value="{{ h }}" {% if h == hour_to %}selected{% endif %}>{{ h|stringformat:"02d" }}:59</option>
+        {% endfor %}
+      </select>
+      <a href="/reports/weekly/?from={{ from_date }}&to={{ to_date }}"
+         style="font-size:12px;color:var(--subtle);text-decoration:none">Reset</a>
+      <span style="font-size:12px;color:var(--subtle)">· {{ recent_intervals|length }} rows</span>
+    </form>
+  </div>
+  <div style="max-height:420px;overflow-y:auto">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th><th>Action</th>
+        <th class="num">Solar kW</th><th class="num">Load kW</th>
+        <th class="num">Battery kW</th><th class="num">SoC</th>
+        <th class="num">Grid kW</th><th class="num">€/kWh</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recent_intervals %}
+      <tr>
+        <td class="mono">{{ r.time }}</td>
+        <td><span class="pill {{ r.action }}">{{ r.action|capfirst }}</span></td>
+        <td class="num">{{ r.solar }}</td>
+        <td class="num">{{ r.load }}</td>
+        <td class="num">{% if r.battery > 0 %}+{% endif %}{{ r.battery }}</td>
+        <td class="num">{{ r.soc }}%</td>
+        <td class="num">{{ r.grid }}</td>
+        <td class="num">{{ r.price }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
 
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if not no_data %}
 <script>
   (function () {
+    var dispatch = {{ dispatch_chart_json|safe }};
+    Plotly.newPlot("dispatch-chart", dispatch.data, dispatch.layout, { responsive: true, displayModeBar: false });
+
     var soc = {{ soc_chart_json|safe }};
     Plotly.newPlot("soc-chart", soc.data, soc.layout, { responsive: true, displayModeBar: false });
 
-    var dispatch = {{ dispatch_chart_json|safe }};
-    Plotly.newPlot("dispatch-chart", dispatch.data, dispatch.layout, { responsive: true, displayModeBar: false });
+    var savings = {{ savings_chart_json|safe }};
+    Plotly.newPlot("savings-chart", savings.data, savings.layout, { responsive: true, displayModeBar: false });
   })();
 </script>
-
 {% endif %}
-</body>
-</html>
+{% endblock %}

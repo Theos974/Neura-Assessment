@@ -145,3 +145,77 @@ def _greedy_step(
         "cost_eur": cost_eur,
         "counterfactual_cost_eur": counterfactual_cost_eur,
     }
+
+
+def dispatch_scenario(
+    energy_intervals,
+    battery_kwh: float,
+    battery_kw_max: float,
+    pv_scale: float = 1.0,
+    initial_soc: float = 0.50,
+) -> list[dict]:
+    """
+    What-if dispatch — same greedy logic as _greedy_step but parameterised.
+    Pure in-memory; does not touch the database.
+
+    pv_scale = new_kwp / baseline_kwp  (e.g. 1.5 for 300 kWp vs 200 kWp)
+    """
+    eff = EFF_CHARGE          # symmetric: sqrt(0.88)
+    soc_min, soc_max = SOC_MIN, SOC_MAX
+
+    soc = initial_soc
+    results: list[dict] = []
+
+    for ei in energy_intervals:
+        solar = ei.solar_kw * pv_scale
+        load  = ei.load_kw
+        price = ei.grid_price_eur_per_kwh
+        hour  = tz.localtime(ei.timestamp).hour
+
+        solar_to_load = min(solar, load)
+        surplus       = solar - solar_to_load
+        unmet         = load - solar_to_load
+        batt_kw       = 0.0
+        curtailed     = 0.0
+
+        if surplus > 0 and soc < soc_max:
+            headroom = (soc_max - soc) * battery_kwh
+            charge   = min(surplus, battery_kw_max, headroom / (eff * DT))
+            batt_kw  = max(0.0, charge)
+            soc     += batt_kw * DT * eff / battery_kwh
+            curtailed = surplus - batt_kw
+        elif surplus > 0:
+            curtailed = surplus
+
+        is_peak = PEAK_START <= hour < PEAK_END
+
+        if not is_peak and soc < soc_max:
+            headroom = (soc_max - soc) * battery_kwh
+            gc       = min(battery_kw_max, headroom / (eff * DT))
+            gc       = max(0.0, gc)
+            batt_kw += gc
+            soc     += gc * DT * eff / battery_kwh
+            unmet   += gc
+
+        if unmet > 0 and soc > soc_min and is_peak:
+            avail = (soc - soc_min) * battery_kwh
+            dc    = min(unmet, battery_kw_max, avail * eff / DT)
+            dc    = max(0.0, dc)
+            batt_kw -= dc
+            soc     -= dc * DT / (eff * battery_kwh)
+            unmet   -= dc
+
+        soc = max(soc_min, min(soc_max, soc))
+        grid_kw = max(0.0, unmet)
+
+        results.append({
+            "battery_kw":              batt_kw,
+            "soc_pct":                 soc * 100.0,
+            "grid_kw":                 grid_kw,
+            "curtailed_kw":            curtailed,
+            "solar_kw":                solar,
+            "cost_eur":                grid_kw * DT * price,
+            "counterfactual_cost_eur": max(0.0, load - solar) * DT * price,
+        })
+
+    return results
