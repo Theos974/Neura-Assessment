@@ -123,8 +123,7 @@ Greedy BTM policy, evaluated at each 15-min step (`dispatch/policy.py`):
 much as discharging in the peak window. The better strategy is to hold charge for the expensive
 afternoon period.
 
-**Round-trip efficiency:** 88%, split symmetrically — charge η = discharge η = √0.88 ≈ 93.8%.
-Applied inside the SoC arithmetic so bounds are never violated.
+**Round-trip efficiency:** 88% is given in the spec. The modelling choice is how to split it: I applied losses symmetrically — charge η = discharge η = √0.88 ≈ 93.8% — rather than front-loading losses on one side. Every kWh stored costs ~6.2% on the way in and every kWh recovered loses another ~6.2% on the way out. The symmetric split is the standard assumption for LFP cells and keeps the SoC arithmetic clean, but it's not the only valid model — front-loading losses on discharge would make discharging slightly less attractive at the margin and could shift a few boundary intervals from discharge to idle.
 
 **Why there's no solar-charge segment in the dispatch timeline:** at 136 kW average peak solar
 and ~150–200 kW hotel load, solar never fully covers the building — there is no surplus to
@@ -255,4 +254,37 @@ Claude Code (claude-sonnet-4-6, VSCode extension) was used
 **Honest assessment:** Claude is faster than I am at boilerplate and chart config. It is slower
 than I am at noticing when numbers don't add up or conflicts that don't make sense. The loop that found the UTC/local date bug was:
 inspect output → form hypothesis → read code → verify with arithmetic → tell Claude exactly
-what to change. That loop ran several times. 
+what to change. That loop ran several times.
+
+---
+
+## Loom (≤ 3 min)
+
+**One thing in the data that surprised me**
+
+The commercial tariff (Code 30) saves less than the residential one (Code 02) — which is
+counterintuitive. You'd expect a business on a commercial tariff to have more battery value,
+not less. The issue is the arbitrage spread: Code 02 has a 2:1 peak/off-peak ratio (€0.30 vs
+€0.15), so the battery earns €0.15 per kWh cycled. Code 30 summer weekday ratio is only 1.44:1
+(€0.1730 vs €0.1200), and weekends are nearly flat at 1.02:1 — essentially no arbitrage value
+on Saturday and Sunday. The battery does the same work under both tariffs; it just earns less
+per cycle under the commercial rate structure.
+
+**One assumption I made and why**
+
+Round-trip efficiency is 88% — given in the spec. The modelling decision is how to split it.
+I applied losses symmetrically: √0.88 ≈ 93.8% on charge, 93.8% on discharge, rather than
+front-loading losses on one side. The symmetric split is the standard assumption for LFP cells
+and keeps the SoC arithmetic clean. The alternative — heavier losses on discharge — would make
+discharging slightly less attractive at the margin and could shift a few boundary intervals. I
+went with symmetric because it's the most defensible default, but it's a modelling choice, not
+a physical fact.
+
+**What I'd build next with another day**
+
+Forecast-aware dispatch. The what-if tool shows that doubling the PV array produces zero extra
+savings — the battery fills from the grid overnight and is already full when solar peaks, so
+surplus curtails. The fix is a day-ahead solar forecast (Open-Meteo is free): if tomorrow looks
+sunny, skip the overnight grid charge and let solar fill the battery instead. That single change
+unlocks self-consumption gains that currently sit at zero and is the highest-value improvement
+per engineering hour.
