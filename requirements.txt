@@ -1,0 +1,5 @@
+Django>=4.2,<5.0
+plotly>=5.18
+numpy>=1.26
+requests>=2.31
+python-dotenv>=1.0
