@@ -258,8 +258,6 @@ what to change. That loop ran several times.
 
 ---
 
-## Loom (≤ 3 min)
-
 **One thing in the data that surprised me**
 
 The commercial tariff (Code 30) saves less than the residential one (Code 02) — which is
